@@ -2,6 +2,30 @@ const express = require('express');
 const r = require('rethinkdb');
 const router = express.Router();
 const config = require('../../config');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+    destination: function(req, file, cb) {
+        cb(null, './uploads/');
+    },
+    filename: function(req, file, cb) {
+        cb(null, new Date().toISOString() + file.originalname);
+    }
+})
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+        cb(null, true);
+    } else {
+        cb(null, false);
+    }
+}
+const upload = multer({
+    storage: storage, 
+    limits: {
+        fileSize: 1024 * 1024 * 5
+    },
+    fileFilter: fileFilter
+});
 
 router.get('/', (req, res, next) => {
     r.connect(config.rethinkdb).then(function(conn) {
@@ -13,6 +37,7 @@ router.get('/', (req, res, next) => {
                         return {
                             name: doc.name,
                             price: doc.price,
+                            productImage: doc.productImage,
                             id: doc.id,
                             request: {
                                 type: 'GET',
@@ -32,9 +57,10 @@ router.get('/', (req, res, next) => {
     });
 });
 
-router.post('/', (req, res, next) => {
+router.post('/', upload.single('productImage'), (req, res, next) => {
     const product = req.body;
-    
+    product.productImage = req.file.path;
+
     r.connect(config.rethinkdb).then(function(conn) {
         r.table("products").insert(product, {returnChanges: true}).run(conn).then(function(result) {
             res.status(201).json({
