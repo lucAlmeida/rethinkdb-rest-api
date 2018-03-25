@@ -5,6 +5,7 @@
             "port": 28015,
             "authKey": "",
             "db": "test"
-        }
+        },
+        "JWT_KEY": "secret"
     }
 }
